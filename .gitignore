@@ -193,5 +193,3 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
-# Hide full dataset (only show small sample)
-data/raw/
