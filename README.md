@@ -44,7 +44,23 @@ Description: Contains detailed sales data for a global superstore including cust
   - Git, GitHub (for version control)
   - Azure (for cloud deployment)
 
-## 5. Getting Started (Future Section)
+## 5. Getting Started
+To run the retail demand forecasting pipeline, follow these steps:
+1. **Clone the repository:**
+   ```
+   git clone https://github.com/jackhenshaw/retail_demand_forecasting.git
+   cd retail_demand_forecasting
+   ```
+2. **Install dependencies:**
+   ```
+   pip install -r requirements.txt
+   ```
+3. **Place your data:** Ensure your `Sample-Superstore.csv` file is located in the `data/raw/` directory.
+4. **Run the main script:**
+   ```
+   python main.py
+   ```
+   This will execute the full pipeline, training models and saving forecasts to the `forecasts/` directory.
 
 ## 6. Screenshots & Dashboards
 ### Basic EDA dashboards
