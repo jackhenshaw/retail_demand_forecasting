@@ -1,9 +1,12 @@
 import pandas as pd
 import pickle
 import os
+import logging
 
 from src.data_processing import DataProcessor
 from src.config import MODELS_DIR, FORECASTS_DIR, TEST_SIZE_WEEKS, SARIMA_MODEL_CONFIGS
+
+logger = logging.getLogger(__name__)
 
 class ModelPredictor:
     """
@@ -33,7 +36,7 @@ class ModelPredictor:
         self.test_size_weeks = test_size_weeks
 
         os.makedirs(self.forecasts_dir, exist_ok=True)
-        print(f"ModelPredictor Initialised. Forecasts will be saved to: {self.forecasts_dir}")
+        logger.info(f"ModelPredictor Initialised. Forecasts will be saved to: {self.forecasts_dir}")
 
     def load_model_and_lambda(self, category: str) -> tuple:
         """
@@ -54,13 +57,13 @@ class ModelPredictor:
                 model_results = pickle.load(f)
             with open(lambda_filename, 'rb') as f:
                 lambda_value = pickle.load(f)
-            print(f"Model and lambda value loaded for {category}")
+            logger.info(f"Model and lambda value loaded for {category}")
             return model_results, lambda_value
         except FileNotFoundError:
-            print(f"Error: Model or lambda file not found for {category}. Please ensure models are trained first.")
+            logging.error(f"Error: Model or lambda file not found for {category}. Please ensure models are trained first.", exc_info=True)
             return None, None
         except Exception as e:
-            print(f"An error occured while loading model for {category}: {e}")
+            logging.error(f"An error occured while loading model for {category}: {e}", exc_info=True)
             return None, None
 
     def generate_forecasts(self,
@@ -85,7 +88,7 @@ class ModelPredictor:
                           and 'Predicted Sales' for the forecast period.
         """
         if model_results is None or lambda_value is None:
-            print(f"Cannot generate forecasts for {category}: Model or lambda not loaded.")
+            logging.error(f"Cannot generate forecasts for {category}: Model or lambda not loaded.", exc_info=True)
             return pd.DataFrame()
 
         # The predict method needs the start and end indices relative to the *original*
@@ -95,7 +98,7 @@ class ModelPredictor:
         start_index = train_size
         end_index = len(weekly_data) - 1
 
-        print(f"Generating forecasts for {category} from index {start_index} to {end_index}")
+        logging.info(f"Generating forecasts for {category} from index {start_index} to {end_index}")
 
         try:
             predictions_boxcox = model_results.predict(start=start_index, end=end_index)
@@ -113,11 +116,11 @@ class ModelPredictor:
                 "Predicted Sales": predicted_sales
             })
             forecast_df.set_index("Order Date", inplace=True)
-            print(f"Forecasts generated for {category}.")
+            logging.info(f"Forecasts generated for {category}.")
             return forecast_df
 
         except Exception as e:
-            print(f"Error generating forecasts for {category}: {e}")
+            logging.error(f"Error generating forecasts for {category}: {e}", exc_info=True)
             return pd.DataFrame()
 
     def run_prediction(self):
@@ -125,18 +128,18 @@ class ModelPredictor:
         Orchestrates the prediction process for all categories.
         Combines all category forecasts into a single DataFrame for PowerBI.
         """
-        print("\n--- Running full prediction pipeline for all categories ---")
+        logging.info("\n--- Running full prediction pipeline for all categories ---")
         all_forecasts = []
 
         self.data_processor.load_data()
         if self.data_processor.df is None:
-            print("Cannot run predictions: Raw data not loaded.")
+            logging.error("Cannot run predictions: Raw data not loaded.", exc_info=True)
             return
 
         for category, config in self.model_configs.items():
             weekly_data = self.data_processor.aggregrate_to_weekly(category=category)
             if weekly_data is None:
-                print(f"Skipping prediction for {category} due to data aggregation error.")
+                logging.error(f"Skipping prediction for {category} due to data aggregation error.")
                 continue
 
             model_results, lambda_value = self.load_model_and_lambda(category)
@@ -154,6 +157,6 @@ class ModelPredictor:
             final_forecast_df = pd.concat(all_forecasts).sort_index()
             forecast_filename = os.path.join(self.forecasts_dir, 'combined_sales_forecasts.csv')
             final_forecast_df.to_csv(forecast_filename)
-            print(f"\nAll category forecasts combined and saved to {forecast_filename}")
+            logging.info(f"All category forecasts combined and saved to {forecast_filename}")
         else:
-            print("No forecasts were generated for any category")
+            logging.error("No forecasts were generated for any category", exc_info=True)

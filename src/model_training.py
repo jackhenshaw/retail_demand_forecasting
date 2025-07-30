@@ -2,9 +2,12 @@ import pandas as pd
 import pickle
 import os
 from statsmodels.tsa.statespace.sarimax import SARIMAX
+import logging
 
 from src.data_processing import DataProcessor
 from src.config import SARIMA_MODEL_CONFIGS, MODELS_DIR, TEST_SIZE_WEEKS
+
+logger = logging.getLogger(__name__)
 
 class ModelTrainer:
     """
@@ -34,7 +37,7 @@ class ModelTrainer:
         self.test_size_weeks = test_size_weeks
 
         os.makedirs(self.models_dir, exist_ok=True)
-        print(f"ModelTrainer initialised. Models will be saved to {self.models_dir}")
+        logger.info(f"ModelTrainer initialised. Models will be saved to {self.models_dir}")
 
     def train_model(self, category: str, weekly_data: pd.DataFrame,
                     order: tuple, seasonal_order: tuple, iqr_multiplier: float):
@@ -48,10 +51,10 @@ class ModelTrainer:
             seasonal_order (tuple): Seasonal (P, D, Q, s) order of the SARIMA model.
             iqr_multiplier (float): Multiplier for the IQR to detect and treat outliers.
         """
-        print(f"\n--- Starting training for {category} category ---")
+        logger.info(f"\n--- Starting training for {category} category ---")
 
         # 1. Treat outliers
-        print(f"Applying outlier treatment with IQR multiplier: {iqr_multiplier}")
+        logger.info(f"Applying outlier treatment with IQR multiplier: {iqr_multiplier}")
         weekly_data["Sales"] = self.data_processor.detect_and_treat_outliers(
             weekly_data["Sales"],
             iqr_multiplier=iqr_multiplier
@@ -67,9 +70,9 @@ class ModelTrainer:
         train_data = transformed_sales.iloc[:train_size]
         test_data = transformed_sales.iloc[train_size:] # This will be used for evaluation later
 
-        print(f"Train data length: {len(train_data)} weeks")
-        print(f"Test data length: {len(test_data)} weeks")
-        print(f"SARIMA order: {order}, Seasonal order: {seasonal_order}")
+        logger.info(f"Train data length: {len(train_data)} weeks")
+        logger.info(f"Test data length: {len(test_data)} weeks")
+        logger.info(f"SARIMA order: {order}, Seasonal order: {seasonal_order}")
 
         # 4. Fit SARIMA Model
         try:
@@ -80,7 +83,7 @@ class ModelTrainer:
                 freq="W"
             )
             results = sarima_model.fit(disp=False) # suppres convergence messages during fitting
-            print(f"SARIMA model for {category} fitted successfully.")
+            logger.info(f"SARIMA model for {category} fitted successfully.")
             # Optionally print summary for debugging/review
             #print(results.summary())
 
@@ -93,10 +96,10 @@ class ModelTrainer:
             with open(lambda_filename, 'wb') as f:
                 pickle.dump(lambda_value, f)
 
-            print(f"Model and lambda value for {category} save to {self.models_dir}.")
+            logger.info(f"Model and lambda value for {category} save to {self.models_dir}.")
 
         except Exception as e:
-            print(f"Error training model for {category}: {e}")
+            logger.error(f"Error training model for {category}: {e}", exc_info=True)
 
     def run_training(self):
         """
@@ -104,15 +107,15 @@ class ModelTrainer:
         """
         self.data_processor.load_data()
         if self.data_processor.df is None:
-            print("Cannot run training: Raw data not loaded. Exiting.")
+            logger.error("Cannot run training: Raw data not loaded. Exiting.", exc_info=True)
             return
 
-        print("\n--- Running full training pipeline for all categories ---")
+        logger.info("\n--- Running full training pipeline for all categories ---")
         for category, config in self.model_configs.items():
             # Aggregate data for the current category
             weekly_data = self.data_processor.aggregrate_to_weekly(category=category)
             if weekly_data is None:
-                print(f"Skipping {category} due to data aggregation error.")
+                logger.error(f"Skipping {category} due to data aggregation error.", exc_info=True)
                 continue
 
             self.train_model(
@@ -122,4 +125,4 @@ class ModelTrainer:
                 seasonal_order=config["seasonal_order"],
                 iqr_multiplier=config['iqr_multiplier']
             )
-        print("\n--- All category models training complete ---")
+        logger.info("\n--- All category models training complete ---")

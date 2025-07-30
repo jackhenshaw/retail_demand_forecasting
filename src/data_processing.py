@@ -1,6 +1,9 @@
 import pandas as pd
 from scipy.stats import boxcox
 from scipy.special import inv_boxcox
+import logging
+
+logger = logging.getLogger(__name__)
 
 class DataProcessor:
     """
@@ -28,13 +31,13 @@ class DataProcessor:
                 encoding='latin1',
                 parse_dates=["Order Date", "Ship Date"]
             )
-            print(f"Data loaded successfully from {self.file_path}")
+            logger.info(f"Data loaded successfully from {self.file_path}")
             return self.df
         except FileNotFoundError:
-            print(f"Error: File not found at {self.file_path}. Please check the path.")
+            logger.error(f"Error: File not found at {self.file_path}. Please check the path.", exc_info=True)
             return None
         except Exception as e:
-            print(f"An error occurred while loading data: {e}")
+            logger.error(f"An error occurred while loading data: {e}", exc_info=True)
             return None
 
     def aggregrate_to_weekly(self, category: str = None) -> pd.DataFrame:
@@ -52,15 +55,15 @@ class DataProcessor:
         """
 
         if self.df is None:
-            print("Error: Data not loaded. Call load_data() first.")
+            logger.error("Error: Data not loaded. Call load_data() first.", exc_info=True)
             return None
 
         df_filtered = self.df.copy()
         if category:
             df_filtered = df_filtered[df_filtered["Category"] == category]
-            print(f"Aggregating weekly sales for category: {category}")
+            logger.info(f"Aggregating weekly sales for category: {category}")
         else:
-            print("Aggregating weekly sales for all categories.")
+            logger.info("Aggregating weekly sales for all categories.")
 
         # Set 'Order Date' as DataFrame index for resampling
         df_filtered.set_index("Order Date", inplace=True)
@@ -70,7 +73,7 @@ class DataProcessor:
         # Fill any weeks with no sales with 0
         weekly_data["Sales"] = weekly_data["Sales"].fillna(0)
 
-        print(f"Weekly data prepared. Length: {len(weekly_data)} weeks.")
+        logger.info(f"Weekly data prepared. Length: {len(weekly_data)} weeks.")
         return weekly_data
 
     def apply_boxcox_transformation(self, data: pd.Series) -> tuple[pd.Series, float]:
@@ -88,7 +91,7 @@ class DataProcessor:
         # Add a small constant to handle zero or negative values before Box-Cox
         # We've seen sales can be 0, so +1 is appropriate
         transformed_data, lambda_value = boxcox(data + 1)
-        print(f"Box-Cox transformation applied. Lambda: {lambda_value:.4f}")
+        logger.info(f"Box-Cox transformation applied. Lambda: {lambda_value:.4f}")
         return pd.Series(transformed_data, index=data.index), lambda_value
 
     def inverse_boxcox_transformation(self, transformed_data: pd.Series, lambda_value: float) -> pd.Series:
@@ -106,7 +109,7 @@ class DataProcessor:
         original_scale_data = inv_boxcox(transformed_data, lambda_value) - 1
         # Ensure no negative values after inverse transform (due to slight numerical errors or model predicting negative)
         original_scale_data[original_scale_data < 0] = 0
-        print("Inverse Box-Cox transformation applied.")
+        logger.info("Inverse Box-Cox transformation applied.")
         return original_scale_data
 
     def detect_and_treat_outliers(self, data_series: pd.Series, window_size: int = 2, iqr_multiplier: float = 4) -> pd.Series:
@@ -141,7 +144,7 @@ class DataProcessor:
 
         outlier_indices = cleaned_series[(cleaned_series < lower_bound) | (cleaned_series > upper_bound)].index
         if not outlier_indices.empty:
-            print(f"Detected {len(outlier_indices)} outliers using IQR method (multiplier={iqr_multiplier}).")
+            logger.info(f"Detected {len(outlier_indices)} outliers using IQR method (multiplier={iqr_multiplier}).")
             for outlier_date in outlier_indices:
                 outlier_idx = cleaned_series.index.get_loc(outlier_date)
 
@@ -156,11 +159,11 @@ class DataProcessor:
                     median_replacement = pd.Series(neighbour_values).median()
                     original_value = cleaned_series.loc[outlier_date]
                     cleaned_series.loc[outlier_date] = median_replacement
-                    print(f"  Treated outlier at {outlier_date}: {original_value:.2f} replaced with {median_replacement:.2f}")
+                    logger.info(f"Treated outlier at {outlier_date}: {original_value:.2f} replaced with {median_replacement:.2f}")
                 else:
-                    print(f"  Could not treat outlier at {outlier_date}: Not enough neighbours.")
+                    logger.info(f"Could not treat outlier at {outlier_date}: Not enough neighbours.")
         else:
-            print("No outliers detected using the IQR method")
+            logger.info("No outliers detected using the IQR method")
 
         return cleaned_series
 
