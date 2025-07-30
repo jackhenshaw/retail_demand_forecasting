@@ -20,6 +20,8 @@ Description: Contains detailed sales data for a global superstore including cust
 - [x] Phase-2: Sales Forecasting Model Development
   - Selection and training of a suitable time-series forecasting model (e.g ARIMA, Prophet, or a simpler regression-based approach)
   - Model evaluation and selection
+- [x] Phase-2.5: Refactoring to a Python Pipeline
+  - Conversion of exploratory notebooks into reusable, scalable Python files, establishing a robust forecasting pipeline. This includes modularising data processing, model training, and prediction logic, and integrating formal logging.
 - [ ] Phase-3: Model Deployment
   - Containerisation of the trained model (e.g using Docker)
   - Exposing the model via a REST API (e.g using Flask/FastAPI)
