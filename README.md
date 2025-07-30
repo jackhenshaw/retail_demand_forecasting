@@ -17,7 +17,7 @@ Description: Contains detailed sales data for a global superstore including cust
   - Initial data exploration to understand distributions, trends, and relationships.
   - Handling missing values, outliers, and feature engineering
   - Developing key analytical insights and initial dashboards in PowerBI (including learning PowerBI)
-- [ ] Phase-2: Sales Forecasting Model Development
+- [x] Phase-2: Sales Forecasting Model Development
   - Selection and training of a suitable time-series forecasting model (e.g ARIMA, Prophet, or a simpler regression-based approach)
   - Model evaluation and selection
 - [ ] Phase-3: Model Deployment
@@ -34,7 +34,7 @@ Description: Contains detailed sales data for a global superstore including cust
 - Libraries:
   - pandas, NumPy (for data manipulation)
   - Matplotlib, Seaborn (for initial python visualisations)
-  - scikit-learn (for modeling)
+  - statsmodels (for ARIMA/SARIMA modeling)
   - Flask/FastAPI, Docker (for deployment)
 - Tools & Platforms:
   - Jupyter Notebooks (for development)
