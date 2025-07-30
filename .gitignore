@@ -193,3 +193,6 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# ML Models (as too large for git)
+models/
+*.pkl
