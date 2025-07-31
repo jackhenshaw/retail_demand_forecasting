@@ -22,12 +22,15 @@ Description: Contains detailed sales data for a global superstore including cust
   - Model evaluation and selection
 - [x] Phase-2.5: Refactoring to a Python Pipeline
   - Conversion of exploratory notebooks into reusable, scalable Python files, establishing a robust forecasting pipeline. This includes modularising data processing, model training, and prediction logic, and integrating formal logging.
-- [ ] Phase-3: Model Deployment
+- [ ] Phase-3: Model Deployment (IN PROGRESS)
   - Containerisation of the trained model (e.g using Docker)
   - Exposing the model via a REST API (e.g using Flask/FastAPI)
-    - Including super basic authentication
+    - [x] Including super basic authentication
   - Deployment to a cloud platform (Azure)
-- [ ] Phase-4: Performance Monitoring & Visualisation
+- [ ] Phase-4: Automated Testing (IN PROGRESS)
+  - [ ] Build out unit tests using pytest (e.g., for `ModelPredictor` logic)
+  - [ ] Build out integration tests using pytest (e.g., for API endpoints with authentication)
+- [ ] Phase-5: Performance Monitoring & Visualisation
   - Setting up basic monitoring for the deployed model's performance
   - Creating interactive Power BI dashboards to visualise forecasted vs actual sales, model accuracy and key performance indicators for business users.
  
@@ -39,6 +42,7 @@ Description: Contains detailed sales data for a global superstore including cust
   - Matplotlib, Seaborn (for initial python visualisations)
   - statsmodels (for ARIMA/SARIMA modeling)
   - Flask/FastAPI, Docker (for deployment)
+  - Pytest (for automated testing)
 - Tools & Platforms:
   - Jupyter Notebooks (for development)
   - Power BI Desktop (for interactive dashboards)
@@ -62,6 +66,13 @@ To run the retail demand forecasting pipeline, follow these steps:
    python main.py
    ```
    This will execute the full pipeline, training models and saving forecasts to the `forecasts/` directory.
+
+### Running tests
+To execute the automated testing suite, navigate to the project root directory and run:
+```
+pytest
+```
+This will run all unit and integration tests, ensuring the core logic and API functionality are working as expected (once implemented).
 
 ## 6. Screenshots & Dashboards
 ### Basic EDA dashboards
