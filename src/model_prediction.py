@@ -146,9 +146,13 @@ class ModelPredictor:
             List[float]: The forecasted sales values, inverse-transformed and non-negative.
         """
         try:
-            prepared_historical_series = pd.Series(historical_sales) + 1
-            transformed_historical_sales = boxcox(prepared_historical_series, lmbda=lambda_value)
-            updated_model_results = model_results.append(transformed_historical_sales)
+            if historical_sales:
+                prepared_historical_series = pd.Series(historical_sales) + 1
+                transformed_historical_sales = boxcox(prepared_historical_series, lmbda=lambda_value)
+                updated_model_results = model_results.append(transformed_historical_sales)
+            else:
+                updated_model_results = model_results
+
             start_forecast_index = len(updated_model_results.fittedvalues)
             end_forecast_index = start_forecast_index + forecast_steps - 1
             predictions_boxcox = updated_model_results.predict(
