@@ -2,6 +2,9 @@ import pandas as pd
 import pickle
 import os
 import logging
+from scipy.stats import boxcox
+from scipy.special import inv_boxcox
+from typing import List
 
 from src.data_processing import DataProcessor
 from src.config import MODELS_DIR, FORECASTS_DIR, TEST_SIZE_WEEKS, SARIMA_MODEL_CONFIGS
@@ -122,6 +125,44 @@ class ModelPredictor:
         except Exception as e:
             logging.error(f"Error generating forecasts for {category}: {e}", exc_info=True)
             return pd.DataFrame()
+
+    def generate_single_forecast(self,
+                                 model_results,
+                                 lambda_value: float,
+                                 historical_sales: List[float],
+                                 forecast_steps: int) -> List[float]:
+        """
+        Generates a single forecast for a given model, lambda, and historical sales data.
+        This method is designed for live API predictions where new historical data
+        is provided to update the model state before forecasting.
+
+        Args:
+            model_results: The loaded SARIMAXResults object for the category
+            lambda_value (float): The Box-Cox lambda value for the category.
+            historical_sales (List[float]): The most recent actual sales data (untransformed).
+            forecast_steps (int): The number of steps (weeks) to forecast.
+
+        Returns:
+            List[float]: The forecasted sales values, inverse-transformed and non-negative.
+        """
+        try:
+            prepared_historical_series = pd.Series(historical_sales) + 1
+            transformed_historical_sales = boxcox(prepared_historical_series, lmbda=lambda_value)
+            updated_model_results = model_results.append(transformed_historical_sales)
+            start_forecast_index = len(updated_model_results.fittedvalues)
+            end_forecast_index = start_forecast_index + forecast_steps - 1
+            predictions_boxcox = updated_model_results.predict(
+                start=start_forecast_index,
+                end=end_forecast_index
+            )
+            forecast_values = inv_boxcox(predictions_boxcox, lambda_value) - 1
+            forecast_values[forecast_values < 0] = 0
+            return forecast_values.tolist()
+
+        except Exception as e:
+            logger.error(f"Error during single forecast generation: {e}", exc_info=True)
+            # Re-raise the exception or return an empty list/error indicitor
+            raise # Re-raise to be caught by the API endpoint's try-except
 
     def run_prediction(self):
         """
