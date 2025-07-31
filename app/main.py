@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Security, Depends
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 import pickle
 import os
@@ -6,10 +7,19 @@ from typing import List, Dict, Tuple
 import pandas as pd
 from scipy.special import inv_boxcox
 from scipy.stats import boxcox
+import logging
 
 from src.model_prediction import ModelPredictor
 from src.data_processing import DataProcessor
-from src.config import RAW_DATA_PATH, MODELS_DIR, FORECASTS_DIR, SARIMA_MODEL_CONFIGS, TEST_SIZE_WEEKS
+from src.config import (
+    RAW_DATA_PATH,
+    MODELS_DIR,
+    FORECASTS_DIR,
+    SARIMA_MODEL_CONFIGS,
+    TEST_SIZE_WEEKS
+)
+
+logger = logging.getLogger(__name__)
 
 # Define the input data scheme using Pydantic
 class InputData(BaseModel):
@@ -17,6 +27,21 @@ class InputData(BaseModel):
     forecast_steps: int = 52 # Default to 52 weeks if not provided
 
 app = FastAPI(title="Sales Forecast Prediction API")
+
+# --- Authentication Configuration ---
+# For a real project, store this in environment variable, NOT HARDCODED!
+API_KEY = "password" # <-- REPLACE WITH A STRONG KEY IN PRODUCTION
+API_KEY_NAME = "X-API-Key" # This is the name of the HTTP header where the client will send the key
+# Define the API Key Header scheme
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=True)
+
+# Dependency to validate the API key
+async def get_api_key(api_key: str = Security(api_key_header)):
+    if api_key == API_KEY:
+        return api_key
+    raise HTTPException(
+        status_code=401, detail="Unauthorized: Invalid API Key"
+    )
 
 # --- Global storage for loaded models and lambda values ---
 loaded_models: Dict[str, Tuple[any, float]] = {}
@@ -75,11 +100,12 @@ async def root():
 
 # --- Prediction endpoint for a specific category
 @app.post("/predict/{category}")
-def predict_sales(category: str, data: InputData):
+def predict_sales(category: str, data: InputData, api_key: str = Depends(get_api_key)):
     """
     Generates a sales forecast for the specified category.
     The 'historical_sales' should be the most recent weekly sales figures
     leading up to the forecast period.
+    Requires an API key in the 'X-API-Key' header
     """
     if category not in loaded_models:
         raise HTTPException(status_code=404, detail=f"Model for category '{category}' not found or not loaded.")
