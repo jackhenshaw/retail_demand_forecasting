@@ -25,6 +25,7 @@ Description: Contains detailed sales data for a global superstore including cust
 - [ ] Phase-3: Model Deployment
   - Containerisation of the trained model (e.g using Docker)
   - Exposing the model via a REST API (e.g using Flask/FastAPI)
+    - Including super basic authentication
   - Deployment to a cloud platform (Azure)
 - [ ] Phase-4: Performance Monitoring & Visualisation
   - Setting up basic monitoring for the deployed model's performance
