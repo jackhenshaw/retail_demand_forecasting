@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Security, Depends
 from fastapi.security import APIKeyHeader
+from contextlib import asynccontextmanager
 from pydantic import BaseModel
 import pickle
 import os
@@ -26,8 +27,6 @@ class InputData(BaseModel):
     historical_sales: List[float] # Pd.Series
     forecast_steps: int = 52 # Default to 52 weeks if not provided
 
-app = FastAPI(title="Sales Forecast Prediction API")
-
 # --- Authentication Configuration ---
 # For a real project, store this in environment variable, NOT HARDCODED!
 API_KEY = "password" # <-- REPLACE WITH A STRONG KEY IN PRODUCTION
@@ -46,9 +45,9 @@ async def get_api_key(api_key: str = Security(api_key_header)):
 # --- Global storage for loaded models and lambda values ---
 loaded_models: Dict[str, Tuple[any, float]] = {}
 MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
-global_predictor: ModelPredictor = None # Assing after loading ML models
+global_predictor: ModelPredictor = None # Assigning after loading ML models
 
-# --- Helpher function to load a single model and its lambda
+# --- Helper function to load a single model and its lambda
 def load_category_model(category: str) -> Tuple[any, float]:
     """Loads SARIMA modeal and lambda for a given category"""
     model_filename = os.path.join(MODELS_DIR, f'{category.lower().replace(" ", "_")}_sarima_model.pkl')
@@ -68,8 +67,8 @@ def load_category_model(category: str) -> Tuple[any, float]:
         print(f"An error occurred while loading model for {category}: {e}")
         return None, None
 
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     global global_predictor # Declare intent to modify global variable
 
     print("Loading models on application startup...")
@@ -91,6 +90,13 @@ async def startup_event():
         model_configs=SARIMA_MODEL_CONFIGS,
         test_size_weeks=TEST_SIZE_WEEKS
     )
+
+    yield
+
+    print("App shutting down...")
+    # Any clean-up can go here
+
+app = FastAPI(title="Sales Forecast Prediction API", lifespan=lifespan)
 
 # --- Root endpoint for health check ---
 @app.get("/")
