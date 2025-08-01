@@ -94,10 +94,10 @@ def test_generate_single_forecast_no_historical_sales(mock_predictor):
     forecast_steps = 3
     test_lambda = 0.5
 
-    # Expected: (x^2) - 1
-    # 10.0^2 - 1 = 99.0
-    # 11.0^2 - 1 = 120.0
-    # 12.0^2 - 1 = 143.0
+    # Expected: (lambda * y + 1)^2 - 1
+    # For y = 10.0: (0.5 * 10.0 + 1)^2 - 1 = 35.00
+    # For y = 11.0: (0.5 * 11.0 + 1)^2 - 1 = 41.25
+    # For y = 12.0: (0.5 * 12.0 + 1)^2 - 1 = 48.00
     expected_forecast = [35.00, 41.25, 48.00]
 
     actual_forecast = mock_predictor.generate_single_forecast(
