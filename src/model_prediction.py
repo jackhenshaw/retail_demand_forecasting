@@ -5,9 +5,10 @@ import logging
 from scipy.stats import boxcox
 from scipy.special import inv_boxcox
 from typing import List
+from statsmodels.tsa.statespace.sarimax import SARIMAXResultsWrapper
 
 from src.data_processing import DataProcessor
-from src.config import MODELS_DIR, FORECASTS_DIR, TEST_SIZE_WEEKS, SARIMA_MODEL_CONFIGS
+from src.config import MODELS_DIR, FORECASTS_DIR, TEST_SIZE_WEEKS, SARIMA_MODEL_CONFIGS, FORECAST_STEPS
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,8 @@ class ModelPredictor:
                  models_dir: str = MODELS_DIR,
                  forecasts_dir: str = FORECASTS_DIR,
                  model_configs: dict = SARIMA_MODEL_CONFIGS,
-                 test_size_weeks: int = TEST_SIZE_WEEKS):
+                 test_size_weeks: int = TEST_SIZE_WEEKS,
+                 forecast_steps: int = FORECAST_STEPS):
         """
         Initialises the ModelPredictor.
 
@@ -31,12 +33,14 @@ class ModelPredictor:
             models_dir (str): Directory where trained models are stored.
             forecasts_dir (str): Directory where forecast outputs will be saved.
             model_configs (dict): Dictionary of SARIMA model configurations per category.
+            forecast_steps (int): The number of future periods to forecast.
         """
         self.data_processor = data_processor
         self.models_dir = models_dir
         self.forecasts_dir = forecasts_dir
         self.model_configs = model_configs
         self.test_size_weeks = test_size_weeks
+        self.forecast_steps = forecast_steps
 
         os.makedirs(self.forecasts_dir, exist_ok=True)
         logger.info(f"ModelPredictor Initialised. Forecasts will be saved to: {self.forecasts_dir}")
@@ -69,62 +73,59 @@ class ModelPredictor:
             logging.error(f"An error occured while loading model for {category}: {e}", exc_info=True)
             return None, None
 
-    def generate_forecasts(self,
-                           category: str,
-                           weekly_data: pd.DataFrame,
-                           model_results,
-                           lambda_value: float) -> pd.DataFrame:
+    def generate_forecasts(self, category: str, weekly_data: pd.DataFrame,
+                          model_results: SARIMAXResultsWrapper, lambda_value: float) -> pd.DataFrame:
         """
-        Generates forecasts for a given category using its trained model.
-        The forecasts are made for the test_size_weeks period.
+        Generates a combined DataFrame of historical data, test set actuals, and predictions.
 
         Args:
-            category (str): The name of the sales category.
-            weekly_data (pd.DataFrame): The full weekly aggregated sales data for
-                                        the category (including both training and
-                                        testing periods).
-            model_results: The fitted SARIMAXResults object
-            lambda_value (float): The lambda value used for Box-Cox transformation.
+            category (str): The category name.
+            weekly_data (pd.DataFrame): The full weekly aggregated data for the category.
+            model_results (SARIMAXResultsWrapper): The loaded model results.
+            lambda_value (float): The loaded Box-Cox lambda value.
 
         Returns:
-            pd.DataFrame: A DataFrame containing 'Order Date', 'Category', 'Actual Sales',
-                          and 'Predicted Sales' for the forecast period.
+            pd.DataFrame: A DataFrame with 'Category', 'Actuals', and 'Predicted' columns,
+                          or an empty DataFrame if an error occurs.
         """
         if model_results is None or lambda_value is None:
-            logging.error(f"Cannot generate forecasts for {category}: Model or lambda not loaded.", exc_info=True)
+            logger.error(f"Cannot generate forecasts for {category}: Model or lambda not loaded.")
             return pd.DataFrame()
 
-        # The predict method needs the start and end indices relative to the *original*
-        # series length used for training, plus the forecast horizon.
-        # Here, we are predicting for the held-out test set
-        train_size = len(weekly_data) - self.test_size_weeks
-        start_index = train_size
-        end_index = len(weekly_data) - 1
+        # Split the data into training and test sets
+        train_data = weekly_data[:-self.test_size_weeks]
+        test_data = weekly_data[-self.test_size_weeks:]
 
-        logging.info(f"Generating forecasts for {category} from index {start_index} to {end_index}")
+        # Create a list of all historical sales (training + test)
+        historical_sales = test_data['Sales'].tolist()
 
-        try:
-            predictions_boxcox = model_results.predict(start=start_index, end=end_index)
-            predicted_sales = self.data_processor.inverse_boxcox_transformation(
-                predictions_boxcox, lambda_value
-            )
+        # The total number of steps to forecast is the test size plus the future steps
+        total_forecast_steps = self.test_size_weeks + self.forecast_steps
 
-            actual_sales_series = weekly_data["Sales"].iloc[start_index:end_index+1]
+        # Generate the forecast
+        forecasted_values = self.generate_single_forecast(
+            model_results=model_results,
+            lambda_value=lambda_value,
+            historical_sales=historical_sales,
+            forecast_steps=total_forecast_steps
+        )
 
-            # Create a DataFrame for the results
-            forecast_df = pd.DataFrame({
-                "Order Date": actual_sales_series.index,
-                "Category": category,
-                "Actual Sales": actual_sales_series,
-                "Predicted Sales": predicted_sales
-            })
-            forecast_df.set_index("Order Date", inplace=True)
-            logging.info(f"Forecasts generated for {category}.")
-            return forecast_df
+        future_dates = pd.date_range(start=weekly_data.index[-1] + pd.DateOffset(weeks=1),
+                                     periods=self.forecast_steps,
+                                     freq='W-SUN')
+        full_index = weekly_data.index.append(future_dates)
 
-        except Exception as e:
-            logging.error(f"Error generating forecasts for {category}: {e}", exc_info=True)
-            return pd.DataFrame()
+        # Create the combined DataFrame
+        combined_df = pd.DataFrame(index=full_index)
+        combined_df['Category'] = category
+        combined_df['Actuals'] = weekly_data['Sales']
+
+        # Align predictions with the correct dates
+        # The predictions start at the first date of the test set
+        prediction_index = full_index[-total_forecast_steps:]
+        combined_df['Predicted'] = pd.Series(forecasted_values, index=prediction_index)
+
+        return combined_df
 
     def generate_single_forecast(self,
                                  model_results,

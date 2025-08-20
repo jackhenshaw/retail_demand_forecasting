@@ -20,3 +20,4 @@ MODELS_DIR = "models"
 FORECASTS_DIR = "forecasts"
 RAW_DATA_PATH = "data/raw/Sample-Superstore.csv"
 TEST_SIZE_WEEKS = 52
+FORECAST_STEPS = 4
