@@ -22,14 +22,17 @@ Description: Contains detailed sales data for a global superstore including cust
   - Model evaluation and selection
 - [x] Phase-2.5: Refactoring to a Python Pipeline
   - Conversion of exploratory notebooks into reusable, scalable Python files, establishing a robust forecasting pipeline. This includes modularising data processing, model training, and prediction logic, and integrating formal logging.
+    - **Data Processing** (`data_processing.py`): Responsible for loading data, aggregating it to a weekly frequency, and applying transformations like outlier treatment and Box-Cox normalisation.
+    - **Model Prediction** (`model_training.py`): Handles fitting SARIMA models for each category, and saving the trained models along with their transformation parameters.
+    - **Moddel Prediction** (`model_prediction.py`): Loads the trained models, generates future forecasts, and applies the inverse transformation to produce final, readable sales predictions.
 - [ ] Phase-3: Model Deployment (IN PROGRESS)
   - Containerisation of the trained model (e.g using Docker)
   - Exposing the model via a REST API (e.g using Flask/FastAPI)
     - [x] Including super basic authentication
   - Deployment to a cloud platform (Azure)
-- [ ] Phase-4: Automated Testing (IN PROGRESS)
-  - [ ] Build out unit tests using pytest (e.g., for `ModelPredictor` logic)
-  - [ ] Build out integration tests using pytest (e.g., for API endpoints with authentication)
+- [x] Phase-4: Automated Testing
+  - [x] Build out unit tests using `pytest`  for the `DataProcessor`, `ModelTrainer`, and `ModelPredictor` logic. 
+  - [x] Build out integration tests using `pytest` for the API endpoints, including authentication checks.
 - [ ] Phase-5: Performance Monitoring & Visualisation
   - Setting up basic monitoring for the deployed model's performance
   - Creating interactive Power BI dashboards to visualise forecasted vs actual sales, model accuracy and key performance indicators for business users.
@@ -41,8 +44,8 @@ Description: Contains detailed sales data for a global superstore including cust
   - pandas, NumPy (for data manipulation)
   - Matplotlib, Seaborn (for initial python visualisations)
   - statsmodels (for ARIMA/SARIMA modeling)
-  - Flask/FastAPI, Docker (for deployment)
-  - Pytest (for automated testing)
+  - FastAPI, uvicorn (for deployment)
+  - Pytest, unittest.mock (for automated testing)
 - Tools & Platforms:
   - Jupyter Notebooks (for development)
   - Power BI Desktop (for interactive dashboards)
@@ -72,7 +75,7 @@ To execute the automated testing suite, navigate to the project root directory a
 ```
 pytest
 ```
-This will run all unit and integration tests, ensuring the core logic and API functionality are working as expected (once implemented).
+The testing suite verifies the core business logic of the forecasting pipeline and ensures the API endpoints are functioning correctly. The tests use mocking to isolate functions, ensuring resillience against failures and guaranteering predictable results.
 
 ## 6. Screenshots & Dashboards
 ### Basic EDA dashboards
