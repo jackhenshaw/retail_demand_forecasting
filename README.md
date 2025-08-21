@@ -36,6 +36,8 @@ Description: Contains detailed sales data for a global superstore including cust
 - [ ] Phase-5: Performance Monitoring & Visualisation
   - Setting up basic monitoring for the deployed model's performance
   - Creating interactive Power BI dashboards to visualise forecasted vs actual sales, model accuracy and key performance indicators for business users.
+- [ ] Phase-6: Model improvements:
+  - Improve outlier detection model. Current implementation is fixed IQR range, should move towards rolling window IQR or z-score. 
  
 ## 4. Technologies Used
 - Languages:
