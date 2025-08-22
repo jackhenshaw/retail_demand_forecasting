@@ -1,7 +1,7 @@
 import pytest
 import requests
 from fastapi.testclient import TestClient
-from app.main import app
+from app.backend import app
 
 mock_request_body = {
     "historical_sales": [50.0, 55.0, 60.0, 65.0, 70.0],
