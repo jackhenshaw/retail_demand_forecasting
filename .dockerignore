@@ -1,16 +1,26 @@
-__pycache__/
-.venv/
-.pytest_cache/
-notebooks/
-tests/
-.ipynb_checkpoints/
-.vscode/
-.git/
+# Ignore directories that are not needed for the docker image
+PowerBI/
+data/
 
+# Ignore Python-related cache and temporary directories
+__pycache__
+.venv
 *.pyc
 *.pyo
 *.pyd
+.pytest_cache
+
+# Ignore test and notebook files
 *.ipynb
+notebooks/
+tests/
+.ipynb_checkpoints/
+
+# Ignore files not needed for production
 requirements-dev.txt
 .coverage
+
+# Ignore IDE/editor specific files
+.vscode/
+.git/
 .gitignore
