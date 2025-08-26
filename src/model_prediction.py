@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 import pandas as pd
 import pickle
 import os
@@ -6,9 +7,14 @@ from scipy.stats import boxcox
 from scipy.special import inv_boxcox
 from typing import List
 from statsmodels.tsa.statespace.sarimax import SARIMAXResultsWrapper
+from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
 
 from src.data_processing import DataProcessor
 from src.config import MODELS_DIR, FORECASTS_DIR, TEST_SIZE_WEEKS, SARIMA_MODEL_CONFIGS, FORECAST_STEPS
+
+load_dotenv()
+AZURE_CONNECTION_STRING = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
+AZURE_CONTAINER_NAME = os.environ.get("AZURE_CONTAINER_NAME")
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +51,31 @@ class ModelPredictor:
         os.makedirs(self.forecasts_dir, exist_ok=True)
         logger.info(f"ModelPredictor Initialised. Forecasts will be saved to: {self.forecasts_dir}")
 
+    def download_models_from_azure(self, blob_name: str, local_file_path: str):
+        """
+        Downloads a file from Azure Blob Storage
+
+        Args:
+            blob_name (str): The name of the blob in Azure Storage.
+            local_file_path (str): The local path where the file will be saved.
+        """
+        if not AZURE_CONNECTION_STRING:
+            logger.warning("AZURE_STORAGE_CONNNECTION_STRING is not set. Skipping model download.")
+            return
+
+        try:
+            blob_service_client = BlobServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
+            blob_client = blob_service_client.get_blob_client(
+                container=AZURE_CONTAINER_NAME,
+                blob=blob_name
+            )
+
+            with open(local_file_path, "wb") as download_file:
+                download_file.write(blob_client.download_blob().readall())
+            logger.info(f"Successfully downloaded {blob_name} to {local_file_path}")
+        except Exception as e:
+            logger.error(f"Failed to download {blob_name} from Azure: {e}")
+
     def load_model_and_lambda(self, category: str) -> tuple:
         """
         Loads the trained SARIMA model and its corresponding lambda value for a given category.
@@ -59,6 +90,16 @@ class ModelPredictor:
         model_filename = os.path.join(self.models_dir, f'{category.lower().replace(" ", "_")}_sarima_model.pkl')
         lambda_filename = os.path.join(self.models_dir, f'{category.lower().replace(" ", "_")}_lambda.pkl')
 
+        os.makedirs(self.models_dir, exist_ok=True)
+
+        # Attempt to download the models from Azure first
+        self.download_models_from_azure(f"{category.lower().replace(' ', '_')}_sarima_model.pkl", model_filename)
+        self.download_models_from_azure(f"{category.lower().replace(' ', '_')}_lambda.pkl", lambda_filename)
+
+        if not os.path.exists(model_filename) or not os.path.exists(lambda_filename):
+            logger.error(f"Model or lambda file not found locally for {category}.")
+            return None, None
+
         try:
             with open(model_filename, 'rb') as f:
                 model_results = pickle.load(f)
@@ -66,11 +107,8 @@ class ModelPredictor:
                 lambda_value = pickle.load(f)
             logger.info(f"Model and lambda value loaded for {category}")
             return model_results, lambda_value
-        except FileNotFoundError:
-            logging.error(f"Error: Model or lambda file not found for {category}. Please ensure models are trained first.", exc_info=True)
-            return None, None
-        except Exception as e:
-            logging.error(f"An error occured while loading model for {category}: {e}", exc_info=True)
+        except (IOError, pickle.PickleError) as e:
+            logger.error(f"Error loading model or lambda for {category}: {e}", exc_info=True)
             return None, None
 
     def generate_forecasts(self, category: str, weekly_data: pd.DataFrame,

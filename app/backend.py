@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Security, Depends
 from fastapi.security import APIKeyHeader
 from contextlib import asynccontextmanager
@@ -21,6 +22,7 @@ from src.config import (
 )
 
 logger = logging.getLogger(__name__)
+load_dotenv()
 
 # Define the input data scheme using Pydantic
 class InputData(BaseModel):
@@ -44,44 +46,14 @@ async def get_api_key(api_key: str = Security(api_key_header)):
 
 # --- Global storage for loaded models and lambda values ---
 loaded_models: Dict[str, Tuple[any, float]] = {}
-MODELS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
 global_predictor: ModelPredictor = None # Assigning after loading ML models
-
-# --- Helper function to load a single model and its lambda
-def load_category_model(category: str) -> Tuple[any, float]:
-    """Loads SARIMA modeal and lambda for a given category"""
-    model_filename = os.path.join(MODELS_DIR, f'{category.lower().replace(" ", "_")}_sarima_model.pkl')
-    lambda_filename = os.path.join(MODELS_DIR, f'{category.lower().replace(" ", "_")}_lambda.pkl')
-
-    try:
-        with open(model_filename, "rb") as f:
-            model_results = pickle.load(f)
-        with open(lambda_filename, "rb") as f:
-            lambda_value = pickle.load(f)
-        print(f"Loaded model and lambda for {category}")
-        return model_results, lambda_value
-    except FileNotFoundError:
-        print(f"Error: Model or lambda file not found for {category} at {model_filename} / {lambda_filename}. Ensure models are trained and saved.")
-        return None, None
-    except Exception as e:
-        print(f"An error occurred while loading model for {category}: {e}")
-        return None, None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global global_predictor # Declare intent to modify global variable
 
     print("Loading models on application startup...")
-    categories = ["Furniture", "Office Supplies", "Technology"]
 
-    for category in categories:
-        model, lambda_val = load_category_model(category)
-        if model and lambda_val is not None:
-            loaded_models[category] = (model, lambda_val)
-        else:
-            print(f"Failed to load model for {category}. This category will not be available for predictions.")
-
-    # Initialise ModelPredictor here after models are loaded.
     api_data_processor = DataProcessor(file_path=RAW_DATA_PATH)
     global_predictor = ModelPredictor(
         data_processor=api_data_processor,
@@ -90,6 +62,16 @@ async def lifespan(app: FastAPI):
         model_configs=SARIMA_MODEL_CONFIGS,
         test_size_weeks=TEST_SIZE_WEEKS
     )
+
+    categories = ["Furniture", "Office Supplies", "Technology"]
+
+    for category in categories:
+        model, lambda_val = global_predictor.load_model_and_lambda(category)
+        if model and lambda_val is not None:
+            loaded_models[category] = (model, lambda_val)
+            print(f"Successfully loaded {category} model")
+        else:
+            print(f"Failed to load model for {category}. This category will not be available for predictions.")
 
     yield
 
