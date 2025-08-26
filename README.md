@@ -23,21 +23,24 @@ Description: Contains detailed sales data for a global superstore including cust
 - [x] Phase-2.5: Refactoring to a Python Pipeline
   - Conversion of exploratory notebooks into reusable, scalable Python files, establishing a robust forecasting pipeline. This includes modularising data processing, model training, and prediction logic, and integrating formal logging.
     - **Data Processing** (`data_processing.py`): Responsible for loading data, aggregating it to a weekly frequency, and applying transformations like outlier treatment and Box-Cox normalisation.
-    - **Model Prediction** (`model_training.py`): Handles fitting SARIMA models for each category, and saving the trained models along with their transformation parameters.
-    - **Moddel Prediction** (`model_prediction.py`): Loads the trained models, generates future forecasts, and applies the inverse transformation to produce final, readable sales predictions.
+    - **Model Training** (`model_training.py`): Handles fitting SARIMA models for each category, and saving the trained models along with their transformation parameters.
+    - **Model Prediction** (`model_prediction.py`): Loads the trained models, generates future forecasts, and applies the inverse transformation to produce final, readable sales predictions.
 - [ ] Phase-3: Model Deployment (IN PROGRESS)
-  - Containerisation of the trained model (e.g using Docker)
-  - Exposing the model via a REST API (e.g using Flask/FastAPI)
-    - [x] Including super basic authentication
-  - Deployment to a cloud platform (Azure)
+  - [x] Containerisation of the trained model (e.g using Docker)
+  - [x] Exposing the model via a REST API (e.g using Flask/FastAPI)
+    - Including super basic authentication
+  - [ ] Deployment to a cloud platform (Azure)
 - [x] Phase-4: Automated Testing
   - [x] Build out unit tests using `pytest`  for the `DataProcessor`, `ModelTrainer`, and `ModelPredictor` logic. 
   - [x] Build out integration tests using `pytest` for the API endpoints, including authentication checks.
 - [ ] Phase-5: Performance Monitoring & Visualisation
   - Setting up basic monitoring for the deployed model's performance
   - Creating interactive Power BI dashboards to visualise forecasted vs actual sales, model accuracy and key performance indicators for business users.
+     
+### Future Work
 - [ ] Phase-6: Model improvements:
-  - Improve outlier detection model. Current implementation is fixed IQR range, should move towards rolling window IQR or z-score. 
+  - [ ] Improve outlier detection model. Current implementation is fixed IQR range, should move towards rolling window IQR or z-score. 
+  - [ ] ML models version control (MLFlow?)
  
 ## 4. Technologies Used
 - Languages:
