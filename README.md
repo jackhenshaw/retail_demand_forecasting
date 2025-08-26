@@ -1,5 +1,9 @@
 # Superstore Sales Forecasting and Performance Analysis
 
+**Public API:**
+[https://retail-api-163435843631.europe-west1.run.app](https://retail-api-163435843631.europe-west1.run.app/docs) 
+
+
 ## 1. Overview and Problem Statement
 This project aims to build a sales forecasting model for a global Superstore dataset and provide actionable insights into sales perfomance and trends. 
 Accurate sales forecasts are critical for optimising inventory management, improving supply chain efficiency, and making informed business decisions, while performance analysis helps identify key drivers of success and areas for improvement.
@@ -25,11 +29,11 @@ Description: Contains detailed sales data for a global superstore including cust
     - **Data Processing** (`data_processing.py`): Responsible for loading data, aggregating it to a weekly frequency, and applying transformations like outlier treatment and Box-Cox normalisation.
     - **Model Training** (`model_training.py`): Handles fitting SARIMA models for each category, and saving the trained models along with their transformation parameters.
     - **Model Prediction** (`model_prediction.py`): Loads the trained models, generates future forecasts, and applies the inverse transformation to produce final, readable sales predictions.
-- [ ] Phase-3: Model Deployment (IN PROGRESS)
+- [x] Phase-3: Model Deployment
   - [x] Containerisation of the trained model (e.g using Docker)
   - [x] Exposing the model via a REST API (e.g using Flask/FastAPI)
     - Including super basic authentication
-  - [ ] Deployment to a cloud platform (Azure)
+  - [x] Deployment to a cloud platform (Google cloud)
 - [x] Phase-4: Automated Testing
   - [x] Build out unit tests using `pytest`  for the `DataProcessor`, `ModelTrainer`, and `ModelPredictor` logic. 
   - [x] Build out integration tests using `pytest` for the API endpoints, including authentication checks.
@@ -55,7 +59,8 @@ Description: Contains detailed sales data for a global superstore including cust
   - Jupyter Notebooks (for development)
   - Power BI Desktop (for interactive dashboards)
   - Git, GitHub (for version control)
-  - Azure (for cloud deployment)
+  - Azure Blob Storage (for model persistence)
+  - Google Cloud Run (for API deployment)
 
 ## 5. Getting Started
 To run the retail demand forecasting pipeline, follow these steps:
