@@ -30,11 +30,8 @@ class InputData(BaseModel):
     forecast_steps: int = 52 # Default to 52 weeks if not provided
 
 # --- Authentication Configuration ---
-# For a real project, store this in environment variable, NOT HARDCODED!
-API_KEY = "password" # <-- REPLACE WITH A STRONG KEY IN PRODUCTION
-API_KEY_NAME = "X-API-Key" # This is the name of the HTTP header where the client will send the key
-# Define the API Key Header scheme
-api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=True)
+API_KEY = os.environ.get("API_KEY")
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=True)
 
 # Dependency to validate the API key
 async def get_api_key(api_key: str = Security(api_key_header)):
