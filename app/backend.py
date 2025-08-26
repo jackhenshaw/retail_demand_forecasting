@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Security, Depends
+from fastapi import FastAPI, HTTPException, Security, Depends, Request
 from fastapi.security import APIKeyHeader
 from contextlib import asynccontextmanager
 from pydantic import BaseModel
@@ -10,6 +10,10 @@ import pandas as pd
 from scipy.special import inv_boxcox
 from scipy.stats import boxcox
 import logging
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_ipaddr
+from slowapi.errors import RateLimitExceeded
 
 from src.model_prediction import ModelPredictor
 from src.data_processing import DataProcessor
@@ -26,8 +30,9 @@ load_dotenv()
 
 # Define the input data scheme using Pydantic
 class InputData(BaseModel):
-    historical_sales: List[float] # Pd.Series
-    forecast_steps: int = 52 # Default to 52 weeks if not provided
+    # Example values for quick testing
+    historical_sales: List[float] = [400, 500, 600, 300]
+    forecast_steps: int = 4
 
 # --- Authentication Configuration ---
 API_KEY = os.environ.get("API_KEY")
@@ -77,20 +82,30 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Sales Forecast Prediction API", lifespan=lifespan)
 
+# --- Rate Limiter Configuration ---
+limiter = Limiter(key_func=get_ipaddr, default_limits=["10/minute"])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # --- Root endpoint for health check ---
 @app.get("/")
-async def root():
+@limiter.limit("5/minute")
+async def root(request: Request):
     """Basic health check endpoint."""
     return {"message": "Welcome to the Retail Demand Forecasting API! Use /predict/{category_name} for forecasts."}
 
 # --- Prediction endpoint for a specific category
 @app.post("/predict/{category}")
-def predict_sales(category: str, data: InputData, api_key: str = Depends(get_api_key)):
+@limiter.limit("5/minute")
+def predict_sales(category: str, request: Request, data: InputData, api_key: str = Depends(get_api_key)):
     """
     Generates a sales forecast for the specified category.
     The 'historical_sales' should be the most recent weekly sales figures
     leading up to the forecast period.
-    Requires an API key in the 'X-API-Key' header
+
+    Requires an API key in the 'X-API-Key' header.
+
+    Category: ["Furniture", "Office Supplies", "Technology"]
     """
     if category not in loaded_models:
         raise HTTPException(status_code=404, detail=f"Model for category '{category}' not found or not loaded.")
