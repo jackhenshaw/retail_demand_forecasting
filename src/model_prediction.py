@@ -87,28 +87,38 @@ class ModelPredictor:
             tuple: A tuple containing (model_results, lambda_value) if successful,
                    otherwise (None, None)
         """
-        model_filename = os.path.join(self.models_dir, f'{category.lower().replace(" ", "_")}_sarima_model.pkl')
-        lambda_filename = os.path.join(self.models_dir, f'{category.lower().replace(" ", "_")}_lambda.pkl')
+        model_filename = f'{category.lower().replace(" ", "_")}_sarima_model.pkl'
+        lambda_filename = f'{category.lower().replace(" ", "_")}_lambda.pkl'
+        model_path = os.path.join(self.models_dir, model_filename)
+        lambda_path = os.path.join(self.models_dir, lambda_filename)
 
-        os.makedirs(self.models_dir, exist_ok=True)
+        if os.path.exists(model_path) and os.path.exists(lambda_path):
+            try:
+                with open(model_path, "rb") as model_file, open(lambda_path, "rb") as lambda_file:
+                    model = pickle.load(model_file)
+                    lambda_file = pickle.load(lambda_file)
+                logger.info(f"Successfully loaded model and lambda for {category} from local storage.")
+                return model, lambda_file
+            except Exception as e:
+                logger.error(f"Error loading local model files for {category}: {e}")
 
-        # Attempt to download the models from Azure first
-        self.download_models_from_azure(f"{category.lower().replace(' ', '_')}_sarima_model.pkl", model_filename)
-        self.download_models_from_azure(f"{category.lower().replace(' ', '_')}_lambda.pkl", lambda_filename)
+        # If local files are missing, attempt to download them
+        self.download_models_from_azure(blob_name=model_filename, local_file_path=model_path)
+        self.download_models_from_azure(blob_name=lambda_filename, local_file_path=lambda_path)
 
-        if not os.path.exists(model_filename) or not os.path.exists(lambda_filename):
-            logger.error(f"Model or lambda file not found locally for {category}.")
-            return None, None
-
-        try:
-            with open(model_filename, 'rb') as f:
-                model_results = pickle.load(f)
-            with open(lambda_filename, 'rb') as f:
-                lambda_value = pickle.load(f)
-            logger.info(f"Model and lambda value loaded for {category}")
-            return model_results, lambda_value
-        except (IOError, pickle.PickleError) as e:
-            logger.error(f"Error loading model or lambda for {category}: {e}", exc_info=True)
+        # After downloading, try to load them again
+        if os.path.exists(model_path) and os.path.exists(lambda_path):
+            try:
+                with open(model_path, "rb") as model_file, open(lambda_path, "rb") as lambda_file:
+                    model = pickle.load(model_file)
+                    lambda_file = pickle.load(lambda_file)
+                logger.info(f"Successfully loaded model and lambda for {category} after downloading from Azure.")
+                return model, lambda_file
+            except Exception as e:
+                logger.error(f"Error loading downloaded model files for {category}: {e}")
+                return None, None
+        else:
+            logger.error(f"Model files for {category} were not found locally or failed to download from Azure.")
             return None, None
 
     def generate_forecasts(self, category: str, weekly_data: pd.DataFrame,
