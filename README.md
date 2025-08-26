@@ -87,7 +87,54 @@ pytest
 ```
 The testing suite verifies the core business logic of the forecasting pipeline and ensures the API endpoints are functioning correctly. The tests use mocking to isolate functions, ensuring resillience against failures and guaranteering predictable results.
 
-## 6. Screenshots & Dashboards
+## 6. API Usage
+This section provides details on how to use the deployed sales forecasting API.
+
+### Authentication
+All API endpoints require an API key to be passed in the X-API-Key header for authentication. This is set to "password" (secure I know).
+
+### Endpoints
+POST /predict_sales/{category}.
+
+### Path Parameters:
+- `category` (string, required): The product category for which to generate the forecast.
+  - Allowed values: `Furniture`, `Office Supplies`, `Technology`
+
+### Request Body (JSON):
+- `historical_sales` (array of floats, required): A list of recent weekly sales figures
+- `forecast_steps` (integer, optional): The number of weeks to forecast. Defaults to 4 if not provided.
+
+### Example Request (using `curl`):
+```
+curl -X POST "https://retail-api-163435843631.europe-west1.run.app/predict/Technology" \
+-H "accept: application/json" \
+-H "X-API-Key: password" \
+-H "Content-Type: application/json" \
+-d '{
+  "historical_sales": [400, 500, 600, 300],
+  "forecast_steps": 8
+}'
+"
+```
+
+### Example Response (JSON):
+```
+{
+  "category": "Technology",
+  "forecast": [
+    5703.58,
+    2467.58,
+    200.75,
+    971.73,
+    6811.80,
+    5678.32,
+    2306.19,
+    1740.36
+  ]
+}
+```
+
+## 7. Screenshots & Dashboards
 ### Basic EDA dashboards
 <img width="1632" height="830" alt="image" src="https://github.com/user-attachments/assets/de25b391-800e-403c-ade7-b9bcb1827352" />
 <img width="1630" height="832" alt="image" src="https://github.com/user-attachments/assets/6cf2e358-66f5-45ef-909f-6dd490e23ded" />
