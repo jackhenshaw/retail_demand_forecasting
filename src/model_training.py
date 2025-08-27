@@ -3,6 +3,10 @@ import pickle
 import os
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 import logging
+from sklearn.metrics import mean_absolute_error, root_mean_squared_error
+from scipy.special import inv_boxcox
+import numpy as np
+from datetime import datetime
 
 from src.data_processing import DataProcessor
 from src.config import SARIMA_MODEL_CONFIGS, MODELS_DIR, TEST_SIZE_WEEKS
@@ -50,6 +54,10 @@ class ModelTrainer:
             order (tuple): Non-seasonal (p, d, q) order of the SARIMA model.
             seasonal_order (tuple): Seasonal (P, D, Q, s) order of the SARIMA model.
             iqr_multiplier (float): Multiplier for the IQR to detect and treat outliers.
+
+        Returns:
+            dict: A dictionary containing calculated performance metrics.
+                  MAE, RMSE, MAPE
         """
         logger.info(f"\n--- Starting training for {category} category ---")
 
@@ -95,8 +103,14 @@ class ModelTrainer:
                 pickle.dump(results, f)
             with open(lambda_filename, 'wb') as f:
                 pickle.dump(lambda_value, f)
-
             logger.info(f"Model and lambda value for {category} save to {self.models_dir}.")
+
+            # 6. Calculate performance metrics
+            test_predictions = results.forecast(self.test_size_weeks)
+            forecast_values = inv_boxcox(test_predictions, lambda_value) - 1
+            test_values = inv_boxcox(test_data, lambda_value) - 1
+            perf_metrics = self.calculate_metrics(test_values, forecast_values)
+            self.save_metrics_to_csv(perf_metrics, category)
 
         except Exception as e:
             logger.error(f"Error training model for {category}: {e}", exc_info=True)
@@ -126,3 +140,60 @@ class ModelTrainer:
                 iqr_multiplier=config['iqr_multiplier']
             )
         logger.info("\n--- All category models training complete ---")
+
+    def calculate_metrics(self, actual, prediction):
+        """
+        Calculates performance metrics: MAE, RMSE, MAPE
+
+        Args:
+            actual (np.ndarray or pd.Series): The actual, true, sales values.
+            prediction (np.ndarray or pd.Series): The model's forecasted values.
+
+        Returns:
+            dict: A dictionary containing the calculated metrics.
+        """
+        # Ensure inputs are numpy arrays for consistent operations
+        actual = np.array(actual)
+        prediction = np.array(prediction)
+
+        # Calculate MAE
+        mae = mean_absolute_error(actual, prediction)
+
+        # Calculate RMSE
+        rmse = root_mean_squared_error(actual, prediction)
+
+        # Calculate MAPE
+        mape_actual = np.where(actual == 0, 1e-8, actual)
+        mape = np.mean(np.abs((actual - prediction) / mape_actual)) * 100
+
+        return {
+            "mae": mae,
+            "rmse": rmse,
+            "mape": mape
+        }
+
+    def save_metrics_to_csv(self, metrics: dict, category: str):
+        """
+        Saves the performance metrics to a CSV file.
+        The file is created if it does not exist, and new data is appended.
+
+        Args:
+            metrics (dict): A dictionary of performance metrics (MAE, RMSE, MAPE)
+            category (str): The category namer for which the metrics were calculated.
+        """
+        metrics_file_path = os.path.join(self.models_dir, 'model_performances.csv')
+
+        new_entry = pd.DataFrame([{
+            'timestamp': datetime.now(),
+            'category': category,
+            'mae': metrics['mae'],
+            'rmse': metrics['rmse'],
+            'mape': metrics['mape']
+        }])
+
+        if os.path.exists(metrics_file_path):
+            new_entry.to_csv(metrics_file_path, mode='a', header=False, index=False)
+            logger.info(f"Appended metrics for {category} to {metrics_file_path}")
+        else:
+            new_entry.to_csv(metrics_file_path, mode='w', header=True, index=False)
+            logger.info(f"Created new metrics file at {metrics_file_path}")
