@@ -141,4 +141,37 @@ curl -X POST "https://retail-api-163435843631.europe-west1.run.app/predict/Techn
 <img width="1632" height="832" alt="image" src="https://github.com/user-attachments/assets/5f5eea41-73b9-4e1c-9299-c6b565308855" />
 <img width="1632" height="834" alt="image" src="https://github.com/user-attachments/assets/5a254d08-c14d-477c-ac5f-2ea16c17e343" />
 
+## 8. File Structure
+```
+├── app
+|  └──backend.py
+├── data
+|  └──raw
+|    └──Sample-Superstore.csv
+├── forecasts
+|  └── combined_sales_forecast.csv
+├── models
+├── notebooks
+|  ├── 01_EDA.ipynb
+|  └── 02_ARIMA_modeling.ipynb
+├── PowerBI
+|  └── EDA.pbix
+├── src
+|  ├── config.py
+|  ├── data_processing.py
+|  ├── model_prediction.py
+|  └── model_training.py
+├── tests
+|  ├── test_api.py
+|  ├── test_data_processing.py
+|  ├── test_model_prediction.py
+|  └── test_model_training.py
+├── .dockerignore
+├── .gitignore
+├── Dockerfile
+├── README.md
+├── main.py
+├── requirements-dev.txt
+└── requirements.txt
+```
 
