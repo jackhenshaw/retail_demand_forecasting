@@ -8,7 +8,6 @@ from scipy.special import inv_boxcox
 from typing import List
 from statsmodels.tsa.statespace.sarimax import SARIMAXResultsWrapper
 from azure.storage.blob import BlobServiceClient, BlobClient, ContainerClient
-from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 from src.data_processing import DataProcessor
 from src.config import MODELS_DIR, FORECASTS_DIR, TEST_SIZE_WEEKS, SARIMA_MODEL_CONFIGS, FORECAST_STEPS
@@ -255,34 +254,3 @@ class ModelPredictor:
             logging.info(f"All category forecasts combined and saved to {forecast_filename}")
         else:
             logging.error("No forecasts were generated for any category", exc_info=True)
-
-    def calculate_metrics(self, actual, prediction):
-        """
-        Calculates performance metrics: MAE, RMSE, MAPE
-
-        Args:
-            actual (np.ndarray or pd.Series): The actual, true, sales values.
-            prediction (np.ndarray or pd.Series): The model's forecasted values.
-
-        Returns:
-          dict: A dictionary containing the calculated metrics.
-        """
-        # Ensure inputs are numpy arrays for consistent operations
-        actual = np.array(actual)
-        prediction = np.array(prediction)
-
-        # Calculate MAE
-        mae = mean_absolute_error(actual, prediction)
-
-        # Calculate RMSE
-        rmse = mean_squared_error(actual, prediction, squared=False)
-
-        # Calculate MAPE
-        mape_actual = np.where(actual == 0, 1e-8, actual)
-        mape = np.mean(np.abs((actual - prediction) / mape_actual)) * 100
-
-        return {
-            "mae": mae,
-            "rmse": rmse,
-            "mape": mape
-        }
