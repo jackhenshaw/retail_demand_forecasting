@@ -38,8 +38,8 @@ Description: Contains detailed sales data for a global superstore including cust
   - [x] Build out unit tests using `pytest`  for the `DataProcessor`, `ModelTrainer`, and `ModelPredictor` logic. 
   - [x] Build out integration tests using `pytest` for the API endpoints, including authentication checks.
 - [ ] Phase-5: Performance Monitoring & Visualisation
-  - Setting up basic monitoring for the deployed model's performance
-  - Creating interactive Power BI dashboards to visualise forecasted vs actual sales, model accuracy and key performance indicators for business users.
+  - [x] Setting up basic monitoring for the deployed model's performance
+  - [ ] Creating interactive Power BI dashboards to visualise forecasted vs actual sales, model accuracy and key performance indicators for business users.
      
 ### Future Work
 - [ ] Phase-6: Model improvements:
@@ -140,6 +140,10 @@ curl -X POST "https://retail-api-163435843631.europe-west1.run.app/predict/Techn
 <img width="1630" height="832" alt="image" src="https://github.com/user-attachments/assets/6cf2e358-66f5-45ef-909f-6dd490e23ded" />
 <img width="1632" height="832" alt="image" src="https://github.com/user-attachments/assets/5f5eea41-73b9-4e1c-9299-c6b565308855" />
 <img width="1632" height="834" alt="image" src="https://github.com/user-attachments/assets/5a254d08-c14d-477c-ac5f-2ea16c17e343" />
+
+### Model Performance
+<img width="2876" height="1662" alt="image" src="https://github.com/user-attachments/assets/11155471-f8b1-41ed-889f-154c9339f7c7" />
+
 
 ## 8. File Structure
 ```
