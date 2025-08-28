@@ -219,38 +219,80 @@ class ModelPredictor:
 
     def run_prediction(self):
         """
-        Orchestrates the prediction process for all categories.
-        Combines all category forecasts into a single DataFrame for PowerBI.
+        Orchestrates the prediction process for all categories and saves the results.
+        This method will also save a combined plot data file for each category.
         """
-        logging.info("\n--- Running full prediction pipeline for all categories ---")
-        all_forecasts = []
-
         self.data_processor.load_data()
         if self.data_processor.df is None:
-            logging.error("Cannot run predictions: Raw data not loaded.", exc_info=True)
+            logger.error("Cannot run prediction: Raw data not loaded. Exiting.")
             return
 
         for category, config in self.model_configs.items():
+            logger.info(f"\n--- Running prediction for {category} ---")
             weekly_data = self.data_processor.aggregrate_to_weekly(category=category)
             if weekly_data is None:
-                logging.error(f"Skipping prediction for {category} due to data aggregation error.")
+                logger.error(f"Skipping {category} due to data aggregation error.")
                 continue
 
-            model_results, lambda_value = self.load_model_and_lambda(category)
+            # Split the data to get the test set for plotting
+            train_size = len(weekly_data) - self.test_size_weeks
+            test_data = weekly_data[train_size:]
 
-            category_forecasts_df = self.generate_forecasts(
+            # Generate and save the combined data for the dashboard plot
+            dashboard_df = self.generate_dashboard_data(
                 category=category,
                 weekly_data=weekly_data,
-                model_results=model_results,
-                lambda_value=lambda_value
+                test_data=test_data
             )
-            if not category_forecasts_df.empty:
-                all_forecasts.append(category_forecasts_df)
 
-        if all_forecasts:
-            final_forecast_df = pd.concat(all_forecasts).sort_index()
-            forecast_filename = os.path.join(self.forecasts_dir, 'combined_sales_forecasts.csv')
-            final_forecast_df.to_csv(forecast_filename)
-            logging.info(f"All category forecasts combined and saved to {forecast_filename}")
-        else:
-            logging.error("No forecasts were generated for any category", exc_info=True)
+            if dashboard_df is not None:
+                filename = os.path.join(self.forecasts_dir, f"{category}_dashboard_data.csv")
+                dashboard_df.to_csv(filename, index=False)
+                logger.info(f"Dashboard plot data for {category} saved to {filename}")
+
+    def generate_dashboard_data(self, category: str, weekly_data: pd.DataFrame, test_data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Generates a combined DataFrame for dashboard plotting, including historical,
+        test, and future forecast data.
+
+        Args:
+            category (str): The sales category.
+            weekly_data (pd.DataFrame): The full weekly sales data
+            test_data (pd.DataFrame): The actual sales data for the test period.
+
+        Returns:
+            pd.DataFrame: A combined DataFrame ready for plotting.
+        """
+        model_results, lambda_value = self.load_model_and_lambda(category)
+        if model_results is None:
+            return None
+
+        # Split data into train and test sets
+        train_size = len(weekly_data) - self.test_size_weeks
+        train_data = weekly_data[:train_size]
+
+        # Generate predicitons for the test set
+        predictions_transformed = model_results.predict(
+            start=len(train_data),
+            end=len(train_data) + len(test_data) - 1,
+            dynamic=True
+        )
+        predictions = self.data_processor.inverse_boxcox_transformation(predictions_transformed.values, lambda_value)
+        predictions_series = pd.Series(predictions, index=test_data.index, name='Predicted Sales')
+
+        # Generate future forecast
+        future_forecast_transformed = model_results.forecast(steps=self.forecast_steps)
+        future_forecast = self.data_processor.inverse_boxcox_transformation(future_forecast_transformed, lambda_value)
+
+        # Create a new data range for the future forecast
+        last_date = test_data.index[-1]
+        future_dates = pd.date_range(start=last_date + pd.Timedelta(weeks=1), periods=self.forecast_steps, freq='W')
+        future_forecast_series = pd.Series(future_forecast, index=future_dates, name='Predicted Sales')
+
+        # Combine all data into a single DataFrame
+        combined_df = pd.DataFrame(index=weekly_data.index.append(future_dates))
+        combined_df['Actual Sales'] = weekly_data['Sales']
+        combined_df['Predicted Sales'] = pd.concat([predictions_series, future_forecast_series])
+        combined_df['Category'] = category
+
+        return combined_df.reset_index().rename(columns={'index': 'Date'})
